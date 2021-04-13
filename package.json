@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "antd": "^4.15.1",
+    "autoprefixer": "^10.2.5",
     "react": "^17.0.0",
     "react-dom": "^17.0.0",
     "styled-components": "^5.2.3",

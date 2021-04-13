@@ -9,6 +9,8 @@
   "dependencies": {
     "antd": "^4.15.1",
     "autoprefixer": "^10.2.5",
+    "mobx": "^6.2.0",
+    "mobx-react-lite": "^3.2.0",
     "react": "^17.0.0",
     "react-dom": "^17.0.0",
     "styled-components": "^5.2.3",

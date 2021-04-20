@@ -7,6 +7,8 @@
     "serve": "vite preview"
   },
   "dependencies": {
+    "@types/lodash": "^4.14.168",
+    "@types/styled-components": "^5.1.9",
     "antd": "^4.15.1",
     "autoprefixer": "^10.2.5",
     "mobx": "^6.2.0",

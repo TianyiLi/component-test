@@ -1,10 +1,11 @@
-import { observer, useLocalObservable } from 'mobx-react-lite'
-import range from 'lodash/range'
-import styled from 'styled-components'
-import React, { useRef, useState } from 'react'
-import { action, computed, makeAutoObservable, observable } from 'mobx'
-import { Button } from 'antd'
-const AvailableTime = range(0, 24)
+import { observer, useLocalObservable } from 'mobx-react-lite';
+import range from 'lodash/range';
+import styled from 'styled-components';
+import React, { useRef, useState } from 'react';
+import { action, computed, makeAutoObservable, observable } from 'mobx';
+import { Button } from 'antd';
+const AvailableTime = range(0, 24);
+const weekDays = range(0, 7);
 const TimeTableStyled = styled.div`
   table {
     font-family: Sans-serif;
@@ -87,45 +88,11 @@ const TimeTableStyled = styled.div`
     border-bottom: 0px solid #ccc;
     padding: 5px 10px;
   }
-`
+`;
 class TimeTableControl {
-  @observable timeList = [
-    {
-      day: 'Sun',
-      begin: undefined as number | undefined,
-      end: undefined as number | undefined,
-    },
-    {
-      day: 'Mon',
-      begin: undefined as number | undefined,
-      end: undefined as number | undefined,
-    },
-    {
-      day: 'Tue',
-      begin: undefined as number | undefined,
-      end: undefined as number | undefined,
-    },
-    {
-      day: 'Wed',
-      begin: undefined as number | undefined,
-      end: undefined as number | undefined,
-    },
-    {
-      day: 'Thu',
-      begin: undefined as number | undefined,
-      end: undefined as number | undefined,
-    },
-    {
-      day: 'Fri',
-      begin: undefined as number | undefined,
-      end: undefined as number | undefined,
-    },
-    {
-      day: 'Sat',
-      begin: undefined as number | undefined,
-      end: undefined as number | undefined,
-    },
-  ]
+  @observable timeList: number[][] = weekDays.map(() =>
+    Array.from({ length: 24 }, (_) => 0)
+  );
 
   /**
    * [time X, timeList Y]
@@ -136,84 +103,95 @@ class TimeTableControl {
   currentSession = {
     origin: [-1, -1] as [number, number],
     end: [-1, -1] as [number, number],
-  }
+    turnHighLight: true,
+  };
 
-  active = false
+  active = false;
 
   constructor() {
-    makeAutoObservable(this)
-    this.mouseDown = this.mouseDown.bind(this)
+    makeAutoObservable(this);
+    this.mouseDown = this.mouseDown.bind(this);
   }
 
   private readIndex(
     e: React.MouseEvent<HTMLTableElement>
   ): [string, number, number] | false {
-    const dataIndex = (e.target as HTMLElement).getAttribute('data-index')
-    if (!dataIndex) return false
-    const [day, time, timeListIndex] = dataIndex.split(' ')
-    return [day, +time, +timeListIndex]
+    const dataIndex = (e.target as HTMLElement).getAttribute('data-index');
+    if (!dataIndex) return false;
+    const [day, time, timeListIndex] = dataIndex.split(' ');
+    return [day, +time, +timeListIndex];
   }
 
   @action
   mouseDown(e: React.MouseEvent<HTMLTableElement>) {
-    const data = this.readIndex(e)
-    if (!data) return false
-    const [day, time, timeListIndex] = data
-    this.timeList[timeListIndex].begin = time
-    this.timeList[timeListIndex].end = time
-    this.currentSession.origin = [time, timeListIndex]
-    this.currentSession.end = [time, timeListIndex]
-    this.active = true
+    this.active = true;
+    const data = this.readIndex(e);
+    if (!data) return false;
+    const [day, time, timeListIndex] = data;
+    this.currentSession.origin = [time, timeListIndex];
+    this.currentSession.end = [time, timeListIndex];
+    this.currentSession.turnHighLight = !this.timeList[timeListIndex][time]
   }
 
   @action
   mouseMove(e: React.MouseEvent<HTMLTableElement>) {
-    if (!this.active) return false
-    const data = this.readIndex(e)
-    if (!data) return false
-    const [day, time, timeListIndex] = data
-    this.currentSession.end = [time, timeListIndex]
+    if (!this.active) return false;
+    const data = this.readIndex(e);
+    if (!data) return false;
+    const [day, time, timeListIndex] = data;
+    if (this.currentSession.origin.every((e) => e === -1)) {
+      this.currentSession.origin = [time, timeListIndex];
+      this.currentSession.turnHighLight = !this.timeList[timeListIndex][time]
+    }
+    this.currentSession.end = [time, timeListIndex];
   }
 
   @action
   mouseUp(e: React.MouseEvent<HTMLTableElement>) {
-    if (!this.active) return
-    this.active = false
-    const data = this.readIndex(e)
-    if (!data) return false
-    const [day, time, timeListIndex] = data
+    if (!this.active) return;
+    this.active = false;
+    const data = this.readIndex(e);
+    if (!data) return false;
+    const [day, time, timeListIndex] = data;
 
     // cal the position
-    const diff = timeListIndex - this.currentSession.origin[1]
+    const diff = timeListIndex - this.currentSession.origin[1];
     const cond = (current: number) =>
-      diff < 0 ? current >= timeListIndex : current <= timeListIndex
+      diff < 0 ? current >= timeListIndex : current <= timeListIndex;
+    const min = Math.min(
+      this.currentSession.origin[0],
+      time,
+      this.currentSession.end[0]
+    );
+    const max = Math.max(
+      this.currentSession.origin[0],
+      time,
+      this.currentSession.end[0]
+    );
+
+    const isHighLight = +!this.timeList[this.currentSession.origin[1]][
+      this.currentSession.origin[0]
+    ];
+    console.log(isHighLight);
+
     for (
       let timeListI = this.currentSession.origin[1];
       cond(timeListI);
       diff < 0 ? timeListI-- : timeListI++
     ) {
-      this.timeList[timeListI].begin = Math.min(
-        this.currentSession.origin[0],
-        time,
-        this.timeList[timeListI].begin || this.currentSession.end[0]
-      )
-      this.timeList[timeListI].end = Math.max(
-        this.currentSession.origin[0],
-        time,
-        this.timeList[timeListI].end || this.currentSession.end[0]
-      )
+      for (let j = min; j <= max; j++) {
+        this.timeList[timeListI][j] = isHighLight;
+      }
     }
 
-    this.currentSession.end = [-1, -1]
-    this.currentSession.origin = [-1, -1]
+    this.currentSession.end = [-1, -1];
+    this.currentSession.origin = [-1, -1];
+    this.currentSession.turnHighLight = false
   }
 
   @action
   resetGrid() {
-    for (let i in this.timeList) {
-      this.timeList[i].begin = undefined
-      this.timeList[i].end = undefined
-    }
+    this.timeList = [];
   }
 }
 
@@ -221,26 +199,25 @@ const inRange = (
   scope: { origin: [number, number]; end: [number, number] },
   current: [number, number]
 ) => {
-  const startY = Math.min(scope.origin[1], scope.end[1])
-  const endY = Math.max(scope.origin[1], scope.end[1])
-  const startX = Math.min(scope.origin[0], scope.end[0])
-  const endX = Math.max(scope.origin[0], scope.end[0])
+  const startY = Math.min(scope.origin[1], scope.end[1]);
+  const endY = Math.max(scope.origin[1], scope.end[1]);
+  const startX = Math.min(scope.origin[0], scope.end[0]);
+  const endX = Math.max(scope.origin[0], scope.end[0]);
   return (
     current[1] >= startY &&
     current[1] <= endY &&
     current[0] >= startX &&
     current[0] <= endX
-  )
-}
+  );
+};
 
 export const TimeTable = observer(() => {
-  const [state] = useState(() => new TimeTableControl())
+  const [state] = useState(() => new TimeTableControl());
 
   return (
     <TimeTableStyled>
       <Button onClick={() => state.resetGrid()}>reset</Button>
       <table
-        onClick={() => console.log('e')}
         onMouseDown={state.mouseDown.bind(state)}
         onMouseUp={state.mouseUp.bind(state)}
         onMouseMove={state.mouseMove.bind(state)}
@@ -262,19 +239,16 @@ export const TimeTable = observer(() => {
           </tr>
         </thead>
         <tbody onMouseDown={console.log}>
-          {state.timeList.map((ele, i) => (
-            <tr onMouseDown={console.log} key={ele.day}>
-              <td>{ele.day}</td>
+          {weekDays.map((day, i) => (
+            <tr onMouseDown={console.log} key={day}>
+              <td>{day}</td>
               {AvailableTime.map((time) => (
                 <td
                   key={time}
-                  {...{ 'data-index': `${ele.day} ${time} ${i}` }}
+                  {...{ 'data-index': `${day} ${time} ${i}` }}
                   className={
-                    (ele.begin &&
-                      ele.end &&
-                      time >= ele.begin &&
-                      time <= ele.end) ||
-                    inRange(state.currentSession, [time, i])
+                    state.timeList[i][time] ||
+                    (inRange(state.currentSession, [time, i]) && state.currentSession.turnHighLight)
                       ? 'cell-item active'
                       : 'cell-item in-active'
                   }
@@ -285,5 +259,5 @@ export const TimeTable = observer(() => {
         </tbody>
       </table>
     </TimeTableStyled>
-  )
-})
+  );
+});
